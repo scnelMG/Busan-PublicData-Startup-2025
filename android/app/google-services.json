@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "824515968706",
+    "project_id": "busan-publicdata-startup-2025",
+    "storage_bucket": "busan-publicdata-startup-2025.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:824515968706:android:e8aa73e5e5a3841c4b855b",
+        "android_client_info": {
+          "package_name": "com.example.busan_publicdata_startup"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "824515968706-4kfrm7scln75ugad9replijitindv8gl.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.busan_publicdata_startup",
+            "certificate_hash": "e43e1897d754a5f4a66c811dc2ec9535f30f5569"
+          }
+        },
+        {
+          "client_id": "824515968706-rnbtspong1767djfob6mk2f1mdguucrr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDYWBsbwhibTh4I6VzW75G8zonSvYburLQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "824515968706-rnbtspong1767djfob6mk2f1mdguucrr.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "824515968706-1dgpr1drl6nueb2af75g3fa7d2tolo1u.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.busanPublicdataStartup"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
