@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../auth/login_screen.dart';
+import 'auth/login_screen.dart';
 import '../calendar.dart';
 
 class HomeScreen extends StatelessWidget {
