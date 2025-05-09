@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart'; // 자동 생성된 Firebase 옵션
 import 'screens/home_screen.dart'; // 홈 화면 import
+import 'calendar.dart'; // 캘린더 화면 import
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,7 +20,11 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: '회원가입 예제',
       theme: ThemeData(useMaterial3: true),
-      home: const HomeScreen(nickname: '비회원'), // ✅ 첫 화면을 HomeScreen으로 설정
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const HomeScreen(nickname: '비회원'), // 홈 화면
+        '/calendar': (context) => CalendarScreen(), // 캘린더 화면 추가
+      },
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'auth/login_screen.dart';
+import '../auth/login_screen.dart';
+import '../calendar.dart';
 
 class HomeScreen extends StatelessWidget {
   final String nickname;
@@ -31,6 +32,16 @@ class HomeScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text('안녕하세요, $nickname님!'),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => CalendarScreen()),
+                      );
+                    },
+                    child: const Text('캘린더로 이동'),
+                  ),
                   const SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: () async {
