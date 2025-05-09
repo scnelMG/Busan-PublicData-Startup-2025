@@ -38,7 +38,7 @@ class HomeScreen extends StatelessWidget {
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const LoginScreen(),
+                          builder: (_) => const HomeScreen(nickname: '비회원'),
                         ),
                       );
                     },
