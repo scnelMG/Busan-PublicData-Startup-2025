@@ -23,7 +23,7 @@ class HomeScreen extends StatelessWidget {
                     MaterialPageRoute(builder: (_) => const LoginScreen()),
                   );
                   if (result == 'logged_in') {
-                    (context as Element).reassemble();
+                    (context as Element).reassemble(); // 🔁 로그인 후 다시 빌드
                   }
                 },
                 child: const Text('로그인하기'),
@@ -35,10 +35,14 @@ class HomeScreen extends StatelessWidget {
                   const SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => CalendarScreen()),
-                      );
+                      if (user != null) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => CalendarScreen(currentUser: user),
+                          ),
+                        );
+                      }
                     },
                     child: const Text('캘린더로 이동'),
                   ),

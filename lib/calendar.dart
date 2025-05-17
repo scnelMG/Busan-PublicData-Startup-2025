@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
-import 'package:googleapis/calendar/v3.dart' as calendar;
-import 'package:google_sign_in/google_sign_in.dart';
-import 'package:http/http.dart' as http;
-import 'package:googleapis_auth/googleapis_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CalendarScreen extends StatefulWidget {
+  final User currentUser;
+
+  CalendarScreen({required this.currentUser});
+
   @override
   _CalendarScreenState createState() => _CalendarScreenState();
 }
@@ -16,117 +18,117 @@ class _CalendarScreenState extends State<CalendarScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   Map<DateTime, List<String>> _events = {};
-  GoogleSignInAccount? _currentUser;
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: [calendar.CalendarApi.calendarScope],
-  );
 
   @override
   void initState() {
     super.initState();
-    _googleSignIn.onCurrentUserChanged.listen((account) {
-      setState(() {
-        _currentUser = account;
-      });
-      if (account != null) {
-        _fetchEvents();
-      }
-    });
-    _googleSignIn.signInSilently();
+    _selectedDay = _focusedDay;
+    _loadEventsFromFirestore();
   }
 
-  Future<void> _fetchEvents() async {
-    if (_currentUser == null) return;
+  Future<void> _loadEventsFromFirestore() async {
+    final uid = widget.currentUser.uid;
+    final snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('events')
+        .get();
 
-    try {
-      final authHeaders = await _currentUser!.authHeaders;
-      final accessToken = authHeaders['Authorization']?.split(' ').last;
+    Map<DateTime, List<String>> loadedEvents = {};
 
-      if (accessToken != null) {
-        final client = authenticatedClient(http.Client(), AccessCredentials(
-          AccessToken('Bearer', accessToken, DateTime.now().add(Duration(hours: 1))),
-          null,
-          [calendar.CalendarApi.calendarScope],
-        ));
-
-        final calendarApi = calendar.CalendarApi(client);
-        final events = await calendarApi.events.list(
-          "primary",
-          timeMin: DateTime.now().toUtc(),
-          timeMax: DateTime.now().add(Duration(days: 30)).toUtc(),
-          singleEvents: true,
-          orderBy: "startTime",
-        );
-
-        setState(() {
-          _events.clear();
-          for (var event in events.items ?? []) {
-            DateTime startDate = event.start?.dateTime?.toLocal() ?? DateTime.now();
-            String title = event.summary ?? "No Title";
-
-            _events[startDate] = _events[startDate] ?? [];
-            _events[startDate]!.add(title);
-          }
-        });
-      }
-    } catch (e) {
-      print("Error fetching events: $e");
+    for (var doc in snapshot.docs) {
+      final date = DateFormat('yyyy-MM-dd').parse(doc.id);
+      final events = List<String>.from(doc['events'] ?? []);
+      loadedEvents[date] = events;
     }
+
+    setState(() {
+      _events = loadedEvents;
+    });
+  }
+
+  Future<void> _saveEventToFirestore(DateTime date, String title) async {
+    final uid = widget.currentUser.uid;
+    final formattedDate = DateFormat('yyyy-MM-dd').format(date);
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('events')
+        .doc(formattedDate)
+        .set({
+      'date': formattedDate,
+      'events': FieldValue.arrayUnion([title]),
+    }, SetOptions(merge: true));
+  }
+
+  void _addEvent() {
+    if (_selectedDay == null) return;
+
+    final selectedDate = DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day);
+
+    setState(() {
+      _events[selectedDate] = _events[selectedDate] ?? [];
+      _events[selectedDate]!.add("약속");
+    });
+
+    _saveEventToFirestore(selectedDate, "약속");
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("${DateFormat('yyyy-MM-dd').format(selectedDate)}에 약속이 추가되었습니다.")),
+    );
   }
 
   void _recommendDate() {
-    List<DateTime> dates = _events.keys.toList();
-    dates.sort((a, b) => a.compareTo(b));
+    DateTime startDate = DateTime.now();
+    DateTime? recommendedDate;
 
-    if (dates.isNotEmpty) {
-      DateTime recommendedDate = dates.first;
-      showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: Text("추천 약속 날짜"),
-            content: Text("가장 빠른 약속 날짜는 ${DateFormat('yyyy-MM-dd').format(recommendedDate)} 입니다."),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text("확인"),
-              ),
-            ],
-          );
-        },
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("일정이 없습니다!")),
-      );
+    for (int i = 0; i <= 30; i++) {
+      DateTime checkDate = DateTime(startDate.year, startDate.month, startDate.day).add(Duration(days: i));
+      if ((_events[checkDate]?.isEmpty ?? true)) {
+        recommendedDate = checkDate;
+        break;
+      }
     }
-  }
 
-  Future<void> _signIn() async {
-    try {
-      await _googleSignIn.signIn();
-    } catch (e) {
-      print("Error signing in: $e");
-    }
-  }
-
-  Future<void> _signOut() async {
-    await _googleSignIn.signOut();
-    setState(() {
-      _events.clear();
-    });
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("추천 약속 날짜"),
+          content: Text(
+            recommendedDate != null
+                ? "가장 빠른 약속 없는 날짜는 ${DateFormat('yyyy-MM-dd').format(recommendedDate)} 입니다."
+                : "앞으로 30일 내 모든 날짜에 약속이 있습니다.",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text("확인"),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final user = widget.currentUser;
+
     return Scaffold(
       appBar: AppBar(
         title: Text("캘린더"),
         actions: [
-          IconButton(
-            icon: Icon(_currentUser != null ? Icons.logout : Icons.login),
-            onPressed: _currentUser != null ? _signOut : _signIn,
-          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Center(
+              child: Text(
+                user.displayName ?? user.email ?? '사용자',
+                style: const TextStyle(fontSize: 14),
+              ),
+            ),
+          )
         ],
       ),
       body: Padding(
@@ -156,13 +158,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 _focusedDay = focusedDay;
               },
               eventLoader: (day) {
-                return _events[day] ?? [];
+                final date = DateTime(day.year, day.month, day.day);
+                return _events[date] ?? [];
               },
             ),
             const SizedBox(height: 20),
             ElevatedButton(
+              onPressed: _addEvent,
+              child: Text("선택한 날짜에 약속 등록"),
+            ),
+            ElevatedButton(
               onPressed: _recommendDate,
-              child: Text("가장 빠른 약속 날짜 추천"),
+              child: Text("가장 빠른 약속 없는 날짜 추천"),
             ),
           ],
         ),
