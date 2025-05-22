@@ -1,134 +1,154 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'auth/login_screen.dart';
 import '../calendar.dart';
+import 'nickname_screen.dart';
 
-class HomeScreen extends StatefulWidget {
-  final String nickname;
+final GoogleSignIn googleSignIn = GoogleSignIn(
+  clientId: "824515968706-rnbtspong1767djfob6mk2f1mdguucrr.apps.googleusercontent.com",
+  scopes: ['email'],
+);
 
-  const HomeScreen({super.key, required this.nickname});
+class HomeScreen extends StatelessWidget {
+  final User? currentUser;
 
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
+  const HomeScreen({super.key, this.currentUser});
 
-class _HomeScreenState extends State<HomeScreen> {
-  final TextEditingController _friendEmailController = TextEditingController();
-  final user = FirebaseAuth.instance.currentUser;
-
-  Future<void> _addFriend() async {
-    final friendEmail = _friendEmailController.text.trim();
-
-    if (friendEmail.isEmpty || user == null) return;
-
+  Future<void> _handleGoogleSignIn(BuildContext context) async {
     try {
-      // 친구 이메일로 UID 찾기
-      final querySnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .where('email', isEqualTo: friendEmail)
-          .get();
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
 
-      if (querySnapshot.docs.isEmpty) {
+      if (googleUser == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('해당 이메일의 사용자를 찾을 수 없습니다.')),
+          const SnackBar(content: Text('로그인이 취소되었습니다')),
         );
         return;
       }
 
-      final friendUid = querySnapshot.docs.first.id;
-
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user!.uid)
-          .collection('friends')
-          .doc(friendUid)
-          .set({'email': friendEmail});
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('친구가 추가되었습니다!')),
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
       );
-      _friendEmailController.clear();
-    } catch (e) {
-      print("친구 추가 실패: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('친구 추가 중 오류 발생')),
-      );
+
+      final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+      final firebaseUser = userCredential.user;
+
+      if (firebaseUser != null) {
+        final userDoc = await FirebaseFirestore.instance.collection('users').doc(firebaseUser.uid).get();
+        if (!userDoc.exists || userDoc.data()?['nickname'] == null || userDoc.data()?['nickname'] == '') {
+          // 닉네임 입력 필요
+          if (context.mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => NicknameScreen(user: firebaseUser)),
+            );
+          }
+          return;
+        }
+        await FirebaseFirestore.instance.collection('users').doc(firebaseUser.uid).set({
+          'uid': firebaseUser.uid,
+          'email': firebaseUser.email,
+          'nickname': userDoc.data()?['nickname'] ?? firebaseUser.displayName,
+          'photoURL': firebaseUser.photoURL,
+          'lastLogin': DateTime.now(),
+        }, SetOptions(merge: true));
+
+        if (context.mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => HomeScreen(currentUser: firebaseUser),
+            ),
+          );
+        }
+      }
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('로그인 실패: $error')),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('홈 화면')),
-      body: Center(
-        child: user == null
-            ? ElevatedButton(
-                onPressed: () async {
-                  final result = await Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  );
-                  if (result == 'logged_in') {
-                    (context as Element).reassemble();
-                  }
-                },
-                child: const Text('로그인하기'),
-              )
-            : Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text('안녕하세요, ${widget.nickname}님!'),
-                    const SizedBox(height: 20),
-
-                    // 🔹 캘린더 이동 버튼
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => CalendarScreen(currentUser: user!),
-                          ),
-                        );
-                      },
-                      child: const Text('캘린더로 이동'),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // 🔹 친구 추가
-                    TextField(
-                      controller: _friendEmailController,
-                      decoration: const InputDecoration(
-                        labelText: '친구 이메일',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    ElevatedButton(
-                      onPressed: _addFriend,
-                      child: const Text('친구 추가'),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // 🔹 로그아웃
-                    ElevatedButton(
-                      onPressed: () async {
-                        await FirebaseAuth.instance.signOut();
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const HomeScreen(nickname: '비회원'),
-                          ),
-                        );
-                      },
-                      child: const Text('로그아웃'),
-                    ),
-                  ],
+      appBar: AppBar(
+        title: const Text('홈'),
+        actions: [
+          if (currentUser != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Center(
+                child: Text(
+                  currentUser!.displayName ?? currentUser!.email ?? '사용자',
+                  style: const TextStyle(fontSize: 14),
                 ),
               ),
+            ),
+        ],
       ),
+      body: currentUser == null
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('로그인이 필요합니다'),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => _handleGoogleSignIn(context),
+                    child: const Text('Google 로그인'),
+                  ),
+                ],
+              ),
+            )
+          : Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => CalendarScreen(currentUser: currentUser!),
+                        ),
+                      );
+                    },
+                    child: const Text('캘린더'),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pushNamed(context, '/friend-list');
+                    },
+                    child: const Text('친구 목록'),
+                  ),
+                  const SizedBox(height: 32),
+                  ElevatedButton(
+                    onPressed: () async {
+                      await FirebaseAuth.instance.signOut();
+                      await googleSignIn.signOut();
+                      if (context.mounted) {
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(builder: (context) => const HomeScreen()),
+                          (route) => false,
+                        );
+                      }
+                    },
+                    child: const Text('로그아웃'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
     );
   }
 }

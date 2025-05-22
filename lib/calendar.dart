@@ -128,7 +128,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 style: const TextStyle(fontSize: 14),
               ),
             ),
-          )
+          ),
+          IconButton(
+            icon: const Icon(Icons.people),
+            onPressed: () {
+              Navigator.pushNamed(context, '/friend-list');
+            },
+          ),
         ],
       ),
       body: Padding(
