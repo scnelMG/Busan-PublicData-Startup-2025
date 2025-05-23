@@ -6,6 +6,9 @@ import 'screens/home_screen.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'screens/friend_screen.dart';
+import 'screens/friend_list_screen.dart';
+import 'screens/friend_add_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,9 +28,9 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(useMaterial3: true),
       initialRoute: '/',
       routes: {
-        '/': (context) => const HomeScreen(nickname: '비회원'),
-        '/login': (context) => const LoginScreen(),
-        // 캘린더는 직접 push로 전달
+        '/': (context) => const HomeScreen(),
+        '/friend-list': (context) => FriendListScreen(currentUser: FirebaseAuth.instance.currentUser!),
+        '/friend-add': (context) => FriendAddScreen(currentUser: FirebaseAuth.instance.currentUser!),
       },
     );
   }
@@ -66,12 +69,10 @@ class _LoginScreenState extends State<LoginScreen> {
         idToken: googleAuth.idToken,
       );
 
-      // ✅ FirebaseAuth로 로그인
       final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
       final firebaseUser = userCredential.user;
 
       if (firebaseUser != null) {
-        // ✅ Firestore에 사용자 정보 저장 (또는 업데이트)
         await FirebaseFirestore.instance.collection('users').doc(firebaseUser.uid).set({
           'uid': firebaseUser.uid,
           'email': firebaseUser.email,
@@ -84,13 +85,15 @@ class _LoginScreenState extends State<LoginScreen> {
           statusMessage = "Firebase 로그인 성공: ${firebaseUser.email}";
         });
 
-        // ✅ 캘린더 화면으로 이동
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => CalendarScreen(currentUser: firebaseUser),
-          ),
-        );
+        // 홈 스크린으로 이동
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => HomeScreen(currentUser: firebaseUser),
+            ),
+          );
+        }
       }
     } catch (error) {
       print("로그인 에러: $error");
