@@ -49,14 +49,6 @@ class _FriendListScreenState extends State<FriendListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('친구 목록'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person_add),
-            onPressed: () {
-              Navigator.pushNamed(context, '/friend-add');
-            },
-          ),
-        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -70,11 +62,50 @@ class _FriendListScreenState extends State<FriendListScreen> {
                       leading: friend.photoURL != null
                           ? CircleAvatar(backgroundImage: NetworkImage(friend.photoURL!))
                           : CircleAvatar(child: Text(friend.displayName.isNotEmpty ? friend.displayName[0] : '?')),
-                      title: Text(friend.displayName),
+                      title: FutureBuilder<DocumentSnapshot>(
+                        future: FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(friend.id)
+                            .get(),
+                        builder: (context, snapshot) {
+                          if (snapshot.hasData && snapshot.data!.exists) {
+                            final userData = snapshot.data!.data() as Map<String, dynamic>;
+                            final nickname = userData['nickname'] ?? '익명';
+                            final displayName = userData['displayName'] ?? '이름 없음';
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  nickname,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  displayName,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            );
+                          }
+                          return Text(friend.displayName);
+                        },
+                      ),
                       subtitle: Text(friend.email),
                     );
                   },
                 ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.pushNamed(context, '/friend-add');
+        },
+        child: const Icon(Icons.person_add),
+        tooltip: '친구 추가',
+      ),
     );
   }
 } 

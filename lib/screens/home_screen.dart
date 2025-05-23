@@ -51,6 +51,7 @@ class HomeScreen extends StatelessWidget {
           'uid': firebaseUser.uid,
           'email': firebaseUser.email,
           'nickname': userDoc.data()?['nickname'] ?? firebaseUser.displayName,
+          'displayName': firebaseUser.displayName,
           'photoURL': firebaseUser.photoURL,
           'lastLogin': DateTime.now(),
         }, SetOptions(merge: true));
@@ -82,11 +83,38 @@ class HomeScreen extends StatelessWidget {
           if (currentUser != null)
             Padding(
               padding: const EdgeInsets.only(right: 16),
-              child: Center(
-                child: Text(
-                  currentUser!.displayName ?? currentUser!.email ?? '사용자',
-                  style: const TextStyle(fontSize: 14),
-                ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  FutureBuilder<DocumentSnapshot>(
+                    future: FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(currentUser!.uid)
+                        .get(),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasData && snapshot.data!.exists) {
+                        final userData = snapshot.data!.data() as Map<String, dynamic>;
+                        final nickname = userData['nickname'] ?? '익명';
+                        return Text(
+                          nickname,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        );
+                      }
+                      return const Text('익명');
+                    },
+                  ),
+                  Text(
+                    currentUser!.displayName ?? currentUser!.email ?? '사용자',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
               ),
             ),
         ],

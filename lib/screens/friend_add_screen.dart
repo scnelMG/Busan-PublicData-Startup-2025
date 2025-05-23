@@ -72,10 +72,20 @@ class _FriendAddScreenState extends State<FriendAddScreen> {
   }
 
   Future<void> _addFriend() async {
-    final email = _emailController.text.trim();
-    if (email.isEmpty) {
+    final nickname = _emailController.text.trim();
+    if (nickname.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('이메일을 입력해주세요')),
+        const SnackBar(content: Text('닉네임을 입력해주세요')),
+      );
+      return;
+    }
+
+    // 본인 닉네임으로 친구 추가 방지
+    final myDoc = await FirebaseFirestore.instance.collection('users').doc(widget.currentUser.uid).get();
+    final myNickname = myDoc.data()?['nickname'] ?? '';
+    if (nickname == myNickname) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('본인에게는 친구 요청을 보낼 수 없습니다')),
       );
       return;
     }
@@ -83,12 +93,12 @@ class _FriendAddScreenState extends State<FriendAddScreen> {
     try {
       final userQuery = await FirebaseFirestore.instance
           .collection('users')
-          .where('email', isEqualTo: email)
+          .where('nickname', isEqualTo: nickname)
           .get();
 
       if (userQuery.docs.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('해당 이메일의 사용자를 찾을 수 없습니다')),
+          const SnackBar(content: Text('해당 닉네임의 사용자를 찾을 수 없습니다')),
         );
         return;
       }
@@ -113,7 +123,7 @@ class _FriendAddScreenState extends State<FriendAddScreen> {
 
       final friend = Friend(
         id: targetUserId,
-        email: email,
+        email: targetUserData['email'] ?? '',
         displayName: targetUserData['displayName'] ?? 'Unknown',
         photoURL: targetUserData['photoURL'],
         status: 'pending',
@@ -125,7 +135,11 @@ class _FriendAddScreenState extends State<FriendAddScreen> {
           .doc(widget.currentUser.uid)
           .collection('friends')
           .doc(targetUserId)
-          .set(friend.toMap());
+          .set({
+            ...friend.toMap(),
+            'nickname': targetUserData['nickname'] ?? '익명',
+            'displayName': targetUserData['displayName'] ?? '이름 없음',
+          });
 
       final currentUserDoc = await FirebaseFirestore.instance
           .collection('users')
@@ -148,7 +162,11 @@ class _FriendAddScreenState extends State<FriendAddScreen> {
           .doc(targetUserId)
           .collection('friends')
           .doc(widget.currentUser.uid)
-          .set(reverseFriend.toMap());
+          .set({
+            ...reverseFriend.toMap(),
+            'nickname': currentUserData['nickname'] ?? '익명',
+            'displayName': currentUserData['displayName'] ?? '이름 없음',
+          });
 
       _emailController.clear();
       _loadRequests();
@@ -203,18 +221,31 @@ class _FriendAddScreenState extends State<FriendAddScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    TextField(
-                      controller: _emailController,
-                      decoration: const InputDecoration(
-                        labelText: '친구 이메일',
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: TextInputType.emailAddress,
-                    ),
                     const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: _addFriend,
-                      child: const Text('친구 추가'),
+                    Center(
+                      child: SizedBox(
+                        width: 350,
+                        child: Column(
+                          children: [
+                            TextField(
+                              controller: _emailController,
+                              decoration: const InputDecoration(
+                                labelText: '친구 닉네임',
+                                border: OutlineInputBorder(),
+                              ),
+                              keyboardType: TextInputType.text,
+                            ),
+                            const SizedBox(height: 16),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: _addFriend,
+                                child: const Text('친구 추가'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 32),
                     const Text('받은 친구 요청', style: TextStyle(fontWeight: FontWeight.bold)),

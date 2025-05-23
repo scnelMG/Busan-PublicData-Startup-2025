@@ -35,7 +35,10 @@ class _NicknameScreenState extends State<NicknameScreen> {
 
   void _onNicknameChanged() {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 500), () {
+    if (_nicknameController.value.composing.isValid && !_nicknameController.value.composing.isCollapsed) {
+      return;
+    }
+    _debounce = Timer(const Duration(milliseconds: 800), () {
       _checkNickname();
     });
   }
@@ -74,12 +77,14 @@ class _NicknameScreenState extends State<NicknameScreen> {
   Future<void> _submit() async {
     final nickname = _nicknameController.text.trim();
     if (!_isAvailable) return;
+    final now = DateTime.now();
     await FirebaseFirestore.instance.collection('users').doc(widget.user.uid).set({
       'uid': widget.user.uid,
       'email': widget.user.email,
       'nickname': nickname,
       'photoURL': widget.user.photoURL,
-      'lastLogin': DateTime.now(),
+      'lastLogin': now,
+      'joinedAt': now,
     }, SetOptions(merge: true));
     if (context.mounted) {
       Navigator.pushAndRemoveUntil(
