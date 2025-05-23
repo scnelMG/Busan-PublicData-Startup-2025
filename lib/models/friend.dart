@@ -7,6 +7,10 @@ class Friend {
   final String? photoURL;
   final String status; // 'pending', 'accepted', 'rejected'
   final DateTime createdAt;
+  final String? fromUid;
+  final String? toUid;
+  final String? fromEmail;
+  final String? toEmail;
 
   Friend({
     required this.id,
@@ -15,6 +19,10 @@ class Friend {
     this.photoURL,
     required this.status,
     required this.createdAt,
+    this.fromUid,
+    this.toUid,
+    this.fromEmail,
+    this.toEmail,
   });
 
   Map<String, dynamic> toMap() {
@@ -25,6 +33,10 @@ class Friend {
       'photoURL': photoURL,
       'status': status,
       'createdAt': Timestamp.fromDate(createdAt),
+      'fromUid': fromUid,
+      'toUid': toUid,
+      'fromEmail': fromEmail,
+      'toEmail': toEmail,
     };
   }
 
@@ -40,6 +52,10 @@ class Friend {
           : (map['createdAt'] is DateTime)
               ? map['createdAt'] as DateTime
               : DateTime.now(),
+      fromUid: map['fromUid'],
+      toUid: map['toUid'],
+      fromEmail: map['fromEmail'],
+      toEmail: map['toEmail'],
     );
   }
 } 
