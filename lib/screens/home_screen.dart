@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../calendar.dart';
 import 'nickname_screen.dart';
+import 'auth/login_screen.dart';
+import 'calendar/availability_screen.dart';
+import 'calendar/calendar_screen.dart';
 
 final GoogleSignIn googleSignIn = GoogleSignIn(
   clientId: "824515968706-rnbtspong1767djfob6mk2f1mdguucrr.apps.googleusercontent.com",
@@ -74,6 +76,7 @@ class HomeScreen extends StatelessWidget {
     }
   }
 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -113,8 +116,38 @@ class HomeScreen extends StatelessWidget {
                       fontSize: 12,
                       color: Colors.grey,
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 10),
+
+                    // ✅ 가능한 시간 설정 버튼
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => AvailabilityScreen(currentUser: user!),
+                          ),
+                        );
+                      },
+                      child: const Text('가능한 시간 설정'),
+                    ),
+                    const SizedBox(height: 20),
+
+
+                    // 🔹 로그아웃
+                    ElevatedButton(
+                      onPressed: () async {
+                        await FirebaseAuth.instance.signOut();
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const HomeScreen(nickname: '비회원'),
+                          ),
+                        );
+                      },
+                      child: const Text('로그아웃'),
+                    ),
+                  ],
+                ),
               ),
             ),
         ],
