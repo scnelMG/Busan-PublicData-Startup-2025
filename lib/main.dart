@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'screens/calendar/calendar_screen.dart';
 import 'screens/home_screen.dart';
-import 'calendar.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -21,7 +21,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '약속 캘린더 앱',
+      title: '놀콕이라능능',
       theme: ThemeData(useMaterial3: true),
       initialRoute: '/',
       routes: {
