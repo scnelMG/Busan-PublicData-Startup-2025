@@ -32,28 +32,28 @@ class _FriendAddScreenState extends State<FriendAddScreen> {
   Future<void> _loadRequests() async {
     setState(() { _isLoading = true; });
     try {
-      // 받은 요청: status가 pending이고 내가 받은 요청
+      // 받은 요청: status가 pending이고 toUid가 내 uid인 요청
       final receivedSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(widget.currentUser.uid)
           .collection('friends')
+          .where('toUid', isEqualTo: widget.currentUser.uid)
           .where('status', isEqualTo: 'pending')
           .get();
       final received = receivedSnapshot.docs
           .map((doc) => Friend.fromMap(doc.data()))
-          .where((f) => f.id != widget.currentUser.uid)
           .toList();
 
-      // 보낸 요청: status가 pending이고 내가 보낸 요청
+      // 보낸 요청: status가 pending이고 fromUid가 내 uid인 요청
       final sentSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(widget.currentUser.uid)
           .collection('friends')
+          .where('fromUid', isEqualTo: widget.currentUser.uid)
           .where('status', isEqualTo: 'pending')
           .get();
       final sent = sentSnapshot.docs
           .map((doc) => Friend.fromMap(doc.data()))
-          .where((f) => f.email != widget.currentUser.email)
           .toList();
 
       setState(() {
@@ -128,6 +128,10 @@ class _FriendAddScreenState extends State<FriendAddScreen> {
         photoURL: targetUserData['photoURL'],
         status: 'pending',
         createdAt: DateTime.now(),
+        fromUid: widget.currentUser.uid,
+        toUid: targetUserId,
+        fromEmail: widget.currentUser.email,
+        toEmail: targetUserData['email'],
       );
 
       await FirebaseFirestore.instance
@@ -155,6 +159,10 @@ class _FriendAddScreenState extends State<FriendAddScreen> {
         photoURL: currentUserData['photoURL'],
         status: 'pending',
         createdAt: DateTime.now(),
+        fromUid: widget.currentUser.uid,
+        toUid: targetUserId,
+        fromEmail: widget.currentUser.email,
+        toEmail: targetUserData['email'],
       );
 
       await FirebaseFirestore.instance
@@ -258,19 +266,21 @@ class _FriendAddScreenState extends State<FriendAddScreen> {
                                   : CircleAvatar(child: Text(friend.displayName.isNotEmpty ? friend.displayName[0] : '?')),
                               title: Text(friend.displayName),
                               subtitle: Text(friend.email),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.check),
-                                    onPressed: () => _updateFriendStatus(friend.id, 'accepted'),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.close),
-                                    onPressed: () => _updateFriendStatus(friend.id, 'rejected'),
-                                  ),
-                                ],
-                              ),
+                              trailing: friend.status == 'pending'
+                                  ? Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(Icons.check),
+                                          onPressed: () => _updateFriendStatus(friend.id, 'accepted'),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.close),
+                                          onPressed: () => _updateFriendStatus(friend.id, 'rejected'),
+                                        ),
+                                      ],
+                                    )
+                                  : null,
                             )).toList(),
                           ),
                     const SizedBox(height: 32),
