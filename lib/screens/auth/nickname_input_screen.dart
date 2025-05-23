@@ -58,25 +58,13 @@ class _NicknameInputScreenState extends State<NicknameInputScreen> {
                     SnackBar(content: Text('닉네임 $_nickname 저장 완료!')),
                   );
 
-                  // 👉 다음 화면으로 이동하거나 홈으로
-                  // Navigator.push(...);
-                if (_nickname != null && _nickname!.isNotEmpty) {
-                  await saveNickname(_nickname!); // ✅ Firestore 저장
-
-                  // ✅ 저장 완료 메시지
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('닉네임 $_nickname 저장 완료!')),
-                  );
-
                   // ✅ 홈 화면으로 이동
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => HomeScreen(nickname: _nickname!), //✅ 닉네임 전달
+                      builder: (_) => HomeScreen(currentUser: FirebaseAuth.instance.currentUser),
                     ),
                   );
-                }
-
                 }
               },
               child: const Text('확인'),

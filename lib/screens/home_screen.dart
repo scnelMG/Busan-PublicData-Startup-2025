@@ -86,9 +86,8 @@ class HomeScreen extends StatelessWidget {
           if (currentUser != null)
             Padding(
               padding: const EdgeInsets.only(right: 16),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.end,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   FutureBuilder<DocumentSnapshot>(
                     future: FirebaseFirestore.instance
@@ -100,14 +99,14 @@ class HomeScreen extends StatelessWidget {
                         final userData = snapshot.data!.data() as Map<String, dynamic>;
                         final nickname = userData['nickname'] ?? '익명';
                         return Text(
-                          nickname,
+                          '$nickname ',
                           style: const TextStyle(
-                            fontSize: 18,
+                            fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
                         );
                       }
-                      return const Text('익명');
+                      return const Text('익명 ');
                     },
                   ),
                   Text(
@@ -116,38 +115,8 @@ class HomeScreen extends StatelessWidget {
                       fontSize: 12,
                       color: Colors.grey,
                     ),
-                    const SizedBox(height: 10),
-
-                    // ✅ 가능한 시간 설정 버튼
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => AvailabilityScreen(currentUser: user!),
-                          ),
-                        );
-                      },
-                      child: const Text('가능한 시간 설정'),
-                    ),
-                    const SizedBox(height: 20),
-
-
-                    // 🔹 로그아웃
-                    ElevatedButton(
-                      onPressed: () async {
-                        await FirebaseAuth.instance.signOut();
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const HomeScreen(nickname: '비회원'),
-                          ),
-                        );
-                      },
-                      child: const Text('로그아웃'),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
         ],
@@ -187,6 +156,18 @@ class HomeScreen extends StatelessWidget {
                       Navigator.pushNamed(context, '/friend-list');
                     },
                     child: const Text('친구 목록'),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => AvailabilityScreen(currentUser: currentUser!),
+                        ),
+                      );
+                    },
+                    child: const Text('가능한 시간 설정'),
                   ),
                   const SizedBox(height: 32),
                   ElevatedButton(
