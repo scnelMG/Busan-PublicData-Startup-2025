@@ -2,10 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+// 현재 폴더 기준
 import 'nickname_screen.dart';
+
+// 하위 폴더 기준
 import 'auth/login_screen.dart';
 import 'calendar/availability_screen.dart';
 import 'calendar/calendar_screen.dart';
+import 'appointment/appointment_intro_screen.dart';
 
 final GoogleSignIn googleSignIn = GoogleSignIn(
   clientId: "824515968706-rnbtspong1767djfob6mk2f1mdguucrr.apps.googleusercontent.com",
@@ -40,7 +45,6 @@ class HomeScreen extends StatelessWidget {
       if (firebaseUser != null) {
         final userDoc = await FirebaseFirestore.instance.collection('users').doc(firebaseUser.uid).get();
         if (!userDoc.exists || userDoc.data()?['nickname'] == null || userDoc.data()?['nickname'] == '') {
-          // 닉네임 입력 필요
           if (context.mounted) {
             Navigator.pushReplacement(
               context,
@@ -49,6 +53,7 @@ class HomeScreen extends StatelessWidget {
           }
           return;
         }
+
         await FirebaseFirestore.instance.collection('users').doc(firebaseUser.uid).set({
           'uid': firebaseUser.uid,
           'email': firebaseUser.email,
@@ -75,7 +80,6 @@ class HomeScreen extends StatelessWidget {
       }
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -139,6 +143,18 @@ class HomeScreen extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => AppointmentIntroScreen(currentUser: currentUser!),
+                        ),
+                      );
+                    },
+                    child: const Text('약속 잡기'), // ✅ 약속 잡기 버튼 추가
+                  ),
+                  const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () {
                       Navigator.push(
