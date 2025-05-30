@@ -21,19 +21,20 @@ class AppointmentResultScreen extends StatefulWidget {
 class _AppointmentResultScreenState extends State<AppointmentResultScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
-  Map<DateTime, List<int>> _sharedAvailable = {};
+
+  Map<String, Map<DateTime, Set<int>>> _availablePerUser = {};
   Map<String, String> _friendNames = {};
 
   @override
   void initState() {
     super.initState();
-    _selectedDay = _focusedDay;
+    _selectedDay = _normalizeDate(_focusedDay);
     _loadFriendNames().then((_) => _loadSharedAvailability());
   }
 
-  DateTime _getWeekStart(DateTime date) {
-    return DateTime(date.year, date.month, date.day - (date.weekday - 1));
-  }
+  DateTime _normalizeDate(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
+  DateTime _getWeekStart(DateTime date) =>
+      DateTime(date.year, date.month, date.day - (date.weekday - 1));
 
   Future<void> _loadFriendNames() async {
     for (final uid in widget.selectedFriendIds) {
@@ -105,32 +106,44 @@ class _AppointmentResultScreenState extends State<AppointmentResultScreen> {
       reservedPerUser[uid] = reserved;
     }
 
-    final sharedAvailable = <DateTime, List<int>>{};
+    final availablePerUser = <String, Map<DateTime, Set<int>>>{};
 
     for (final key in allTimeKeys) {
       final dt = DateFormat('yyyy-MM-dd HH:mm').parse(key);
-      final dateOnly = DateTime(dt.year, dt.month, dt.day);
+      final dateOnly = _normalizeDate(dt);
       final hour = dt.hour;
 
-      final isAvailableForAll = allUids.every((uid) =>
-          !unavailablePerUser[uid]!.contains(key) &&
-          !reservedPerUser[uid]!.contains(key));
-
-      if (isAvailableForAll) {
-        sharedAvailable.putIfAbsent(dateOnly, () => []).add(hour);
+      for (final uid in allUids) {
+        if (!unavailablePerUser[uid]!.contains(key) &&
+            !reservedPerUser[uid]!.contains(key)) {
+          availablePerUser.putIfAbsent(uid, () => {}).putIfAbsent(dateOnly, () => {}).add(hour);
+        }
       }
     }
 
     setState(() {
-      _sharedAvailable = sharedAvailable;
+      _availablePerUser = availablePerUser;
     });
+  }
+
+  Color _userColor(String uid) {
+    final allUids = [widget.currentUser.uid, ...widget.selectedFriendIds];
+    final colors = [
+      Colors.blue,
+      Colors.green,
+      Colors.orange,
+      Colors.purple,
+      Colors.pink,
+      Colors.brown,
+    ];
+    final index = allUids.indexOf(uid) % colors.length;
+    return colors[index];
   }
 
   Future<void> _createAppointment(DateTime dateTime) async {
     final String timeKey = DateFormat('yyyy-MM-dd HH:mm').format(dateTime);
     final dateKey = DateFormat('yyyy-MM-dd').format(dateTime);
     final hourKey = dateTime.hour.toString().padLeft(2, '0');
-
     final participantIds = [widget.currentUser.uid, ...widget.selectedFriendIds];
 
     for (final uid in participantIds) {
@@ -174,10 +187,7 @@ class _AppointmentResultScreenState extends State<AppointmentResultScreen> {
           "$names\n${formatted} ${hour.toString().padLeft(2, '0')}:00 ~ ${(hour + 1).toString().padLeft(2, '0')}:00\n\n이 시간에 약속을 잡을까요?",
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("취소"),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("취소")),
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
@@ -195,6 +205,8 @@ class _AppointmentResultScreenState extends State<AppointmentResultScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final selectedDateOnly = _selectedDay != null ? _normalizeDate(_selectedDay!) : null;
+
     return Scaffold(
       appBar: AppBar(title: const Text("약속 잡기 ③")),
       body: Padding(
@@ -208,49 +220,63 @@ class _AppointmentResultScreenState extends State<AppointmentResultScreen> {
               selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
               onDaySelected: (selected, focused) {
                 setState(() {
-                  _selectedDay = selected;
+                  _selectedDay = _normalizeDate(selected);
                   _focusedDay = focused;
                 });
               },
               calendarBuilders: CalendarBuilders(
                 markerBuilder: (context, date, _) {
-                  if (_sharedAvailable.containsKey(DateTime(date.year, date.month, date.day))) {
-                    return Positioned(
-                      bottom: 1,
-                      child: Container(
-                        width: 6,
-                        height: 6,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.blue,
-                        ),
-                      ),
-                    );
-                  }
-                  return null;
+                  final day = _normalizeDate(date);
+
+                  final markers = _availablePerUser.entries
+                      .where((entry) => entry.value.containsKey(day))
+                      .map((entry) => Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 1),
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: _userColor(entry.key),
+                              shape: BoxShape.circle,
+                            ),
+                          ))
+                      .toList();
+
+                  if (markers.isEmpty) return null;
+
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: markers,
+                  );
                 },
               ),
             ),
             const SizedBox(height: 16),
-            if (_selectedDay != null)
+            if (selectedDateOnly != null)
               Expanded(
-                child: _sharedAvailable.containsKey(
-                        DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day))
-                    ? ListView(
-                        children: _sharedAvailable[
-                                DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day)]!
-                            .map((h) {
-                          final selectedDateTime = DateTime(
-                              _selectedDay!.year, _selectedDay!.month, _selectedDay!.day, h);
-                          return ListTile(
-                            leading: const Icon(Icons.access_time),
-                            title: Text(
-                                "${h.toString().padLeft(2, '0')}:00 ~ ${(h + 1).toString().padLeft(2, '0')}:00"),
-                            onTap: () => _showConfirmationDialog(selectedDateTime),
-                          );
-                        }).toList(),
-                      )
-                    : const Center(child: Text("이 날은 모두 가능한 시간이 없습니다.")),
+                child: Builder(
+                  builder: (context) {
+                    final allUids = [widget.currentUser.uid, ...widget.selectedFriendIds];
+                    final availableTimes = List<int>.generate(14, (i) => i + 9).where((hour) {
+                      return allUids.every((uid) =>
+                          _availablePerUser[uid]?[selectedDateOnly]?.contains(hour) ?? false);
+                    }).toList();
+
+                    return availableTimes.isNotEmpty
+                        ? ListView(
+                            children: availableTimes.map((hour) {
+                              final dt = DateTime(
+                                  selectedDateOnly.year, selectedDateOnly.month, selectedDateOnly.day, hour);
+                              return ListTile(
+                                leading: const Icon(Icons.access_time),
+                                title: Text(
+                                    "${hour.toString().padLeft(2, '0')}:00 ~ ${(hour + 1).toString().padLeft(2, '0')}:00"),
+                                onTap: () => _showConfirmationDialog(dt),
+                              );
+                            }).toList(),
+                          )
+                        : const Center(child: Text("이 날은 모두 가능한 시간이 없습니다."));
+                  },
+                ),
               ),
           ],
         ),
